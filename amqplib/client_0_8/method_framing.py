@@ -21,6 +21,8 @@ Convert between frames and higher-level AMQP methods
 from Queue import Empty, Queue
 from struct import pack, unpack
 
+from transport import Timeout
+
 try:
     from collections import defaultdict
 except:
@@ -116,7 +118,7 @@ class MethodReader(object):
         self.expected_types = defaultdict(lambda:1)
 
 
-    def _next_method(self):
+    def _next_method(self, timeout=None):
         """
         Read the next method from the source, once one complete method has
         been assembled it is placed in the internal queue.
@@ -124,7 +126,10 @@ class MethodReader(object):
         """
         while self.queue.empty():
             try:
-                frame_type, channel, payload = self.source.read_frame()
+                frame_type, channel, payload = self.source.read_frame(timeout)
+            except Timeout:
+                # Ok, let pass it through
+                raise
             except Exception, e:
                 #
                 # Connection was closed?  Framing Error?
@@ -204,12 +209,12 @@ class MethodReader(object):
             self.expected_types[channel] = 1
 
 
-    def read_method(self):
+    def read_method(self, timeout=None):
         """
         Read a method from the peer.
 
         """
-        self._next_method()
+        self._next_method(timeout)
         m = self.queue.get()
         if isinstance(m, Exception):
             raise m

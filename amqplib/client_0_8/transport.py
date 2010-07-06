@@ -20,7 +20,9 @@ Read/Write AMQP frames over network transports.
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301
 
-import socket
+import socket, select
+
+class Timeout(Exception): pass
 
 #
 # See if Python 2.6+ SSL support is available
@@ -70,7 +72,7 @@ class _AbstractTransport(object):
         self.close()
 
 
-    def _read(self, n):
+    def _read(self, n, timeout=None):
         """
         Read exactly n bytes from the peer
 
@@ -101,12 +103,14 @@ class _AbstractTransport(object):
             self.sock = None
 
 
-    def read_frame(self):
+    def read_frame(self, timeout=None):
         """
         Read an AMQP frame.
 
         """
-        frame_type, channel, size = unpack('>BHI', self._read(7))
+        # Only the first _read can timeout. After that, we read a whole
+        # frame even if blocking.
+        frame_type, channel, size = unpack('>BHI', self._read(7, timeout))
         payload = self._read(size)
         ch = self._read(1)
         if ch == '\xce':
@@ -144,7 +148,7 @@ class SSLTransport(_AbstractTransport):
             self.sslobj = socket.ssl(self.sock)
 
 
-    def _read(self, n):
+    def _read(self, n, timeout=None):
         """
         It seems that SSL Objects read() method may not supply as much
         as you're asking for, at least with extremely large messages.
@@ -152,6 +156,8 @@ class SSLTransport(_AbstractTransport):
         unittest.
 
         """
+        if timeout is not None:
+            raise RuntimeError('Timeout not implemented for SSL connection')
         result = self.sslobj.read(n)
 
         while len(result) < n:
@@ -174,8 +180,6 @@ class SSLTransport(_AbstractTransport):
                 raise IOError('Socket closed')
             s = s[n:]
 
-
-
 class TCPTransport(_AbstractTransport):
     """
     Transport that deals directly with TCP socket.
@@ -191,12 +195,14 @@ class TCPTransport(_AbstractTransport):
         self._read_buffer = ''
 
 
-    def _read(self, n):
+    def _read(self, n, timeout=None):
         """
         Read exactly n bytes from the socket
 
         """
         while len(self._read_buffer) < n:
+            if timeout is not None:
+                self._timeout(timeout)
             s = self.sock.recv(65536)
             if not s:
                 raise IOError('Socket closed')
@@ -207,6 +213,17 @@ class TCPTransport(_AbstractTransport):
 
         return result
 
+    def _timeout(self, timeout):
+        """
+        Wait up to 'timeout' seconds for new data before given up.
+
+        Raises Timeout exception if no data are available for
+        specified duration.
+        """
+        if timeout is not None:
+            r, w, x = select.select([self.sock], [], [], timeout)
+            if self.sock not in r:
+                raise Timeout
 
 def create_transport(host, connect_timeout, ssl=False):
     """

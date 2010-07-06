@@ -25,6 +25,7 @@ from basic_message import *
 from channel import *
 from connection import *
 from exceptions import *
+from transport import Timeout
 
 __all__ =  [
             'Connection',
@@ -33,4 +34,5 @@ __all__ =  [
             'AMQPException',
             'AMQPConnectionException',
             'AMQPChannelException',
+            'Timeout'
            ]

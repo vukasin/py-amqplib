@@ -30,6 +30,9 @@ class Message(GenericContent):
     """
     A Message for use with the Channnel.basic_* methods.
 
+    Messages received from the server will have a 'delivery_info'
+    member hash with the following keys: exchange, consumer_tag,
+    routing_key, redelivered, delivery_tag, channel.
     """
     #
     # Instances of this class have these attributes, which

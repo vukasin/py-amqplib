@@ -29,7 +29,7 @@ TEST_NAMES = [
         'test_serialization',
         'test_basic_message',
         'test_connection',
-        'test_channel',
+        'test_channel'
         ]
 
 if sys.version_info >= (2, 5):

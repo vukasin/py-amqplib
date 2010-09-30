@@ -1102,6 +1102,64 @@ class Channel(AbstractChannel):
 
         """
         pass
+    
+    def queue_unbind(self, queue, exchange, routing_key='',
+        arguments=None, ticket=None):
+        """
+        unbind queue from an exchange
+
+
+        PARAMETERS:
+            queue: shortstr
+
+                Specifies the name of the queue to unbind.
+
+            exchange: shortstr
+
+                The name of the exchange to unbind from.
+
+            routing_key: shortstr
+
+                message routing key
+
+            arguments: table
+
+                arguments for binding
+
+                A set of arguments for the binding.  The syntax and
+                semantics of these arguments depends on the exchange
+                class.
+
+            ticket: short
+
+                The client provides a valid access ticket giving
+                "active" access rights to the queue's access realm.
+
+        """
+        if arguments is None:
+            arguments = {}
+
+        args = AMQPWriter()
+        if ticket is not None:
+            args.write_short(ticket)
+        else:
+            args.write_short(self.default_ticket)
+        args.write_shortstr(queue)
+        args.write_shortstr(exchange)
+        args.write_shortstr(routing_key)
+        args.write_table(arguments)
+        self._send_method((50, 50), args)
+
+        return self.wait(allowed_methods=[ (50, 51), ])
+
+    def _queue_unbind_ok(self, args):
+        """
+        confirm unbind successful
+
+        This method confirms that the unbind was successful.
+
+        """
+        pass
 
 
     def queue_declare(self, queue='', passive=False, durable=False,
@@ -2587,6 +2645,7 @@ class Channel(AbstractChannel):
         (40, 21): _exchange_delete_ok,
         (50, 11): _queue_declare_ok,
         (50, 21): _queue_bind_ok,
+        (50, 51): _queue_unbind_ok,
         (50, 31): _queue_purge_ok,
         (50, 41): _queue_delete_ok,
         (60, 11): _basic_qos_ok,

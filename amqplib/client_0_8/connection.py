@@ -171,7 +171,7 @@ class Connection(AbstractChannel):
             % (len(self.channels), self.channel_max))
 
 
-    def _wait_method(self, channel_id, allowed_methods):
+    def _wait_method(self, channel_id, allowed_methods, timeout=None):
         """
         Wait for a method from the server destined for
         a particular channel.
@@ -195,7 +195,7 @@ class Connection(AbstractChannel):
         #
         while True:
             channel, method_sig, args, content = \
-                self.method_reader.read_method()
+                self.method_reader.read_method(timeout)
 
             if (channel == channel_id) \
             and ((allowed_methods is None) \

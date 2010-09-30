@@ -67,6 +67,15 @@ class TestChannel(unittest.TestCase):
         n = self.ch.queue_delete()
         self.assertEqual(n, 0)
 
+    def test_binding(self):
+        self.ch.access_request('/data', active=True, write=True, read=True)
+
+        my_routing_key = 'unittest.test_queue'
+
+        qname, _, _ = self.ch.queue_declare()
+        self.ch.queue_bind(qname, 'amq.direct', routing_key=my_routing_key)
+        time.sleep(1.0)
+        self.ch.queue_unbind(qname, 'amq.direct', routing_key=my_routing_key)
 
     def test_encoding(self):
         self.ch.access_request('/data', active=True, write=True, read=True)
